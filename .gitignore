@@ -6,3 +6,5 @@ soundfonts/
 build/
 dist/
 pig_single_finger/
+training_runs/
+.idea/
