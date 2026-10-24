@@ -1,0 +1,44 @@
+[
+  {
+    "name": "tempo_slow_1.1",
+    "description_zh": "慢速幅度较小：乐曲时长拉伸为1.1倍",
+    "stretch": 1.1,
+    "shift": 0,
+    "randomize_hand_positions": false
+  },
+  {
+    "name": "tempo_fast_0.9",
+    "description_zh": "快速幅度较小：乐曲时长压缩为0.9倍",
+    "stretch": 0.9,
+    "shift": 0,
+    "randomize_hand_positions": false
+  },
+  {
+    "name": "pitch_down_1",
+    "description_zh": "整体降低1个半音",
+    "stretch": 1.0,
+    "shift": -1,
+    "randomize_hand_positions": false
+  },
+  {
+    "name": "pitch_up_1",
+    "description_zh": "整体升高1个半音",
+    "stretch": 1.0,
+    "shift": 1,
+    "randomize_hand_positions": false
+  },
+  {
+    "name": "pitch_down_4",
+    "description_zh": "整体降低4个半音",
+    "stretch": 1.0,
+    "shift": -4,
+    "randomize_hand_positions": false
+  },
+  {
+    "name": "pitch_up_4",
+    "description_zh": "整体升高4个半音",
+    "stretch": 1.0,
+    "shift": 4,
+    "randomize_hand_positions": false
+  }
+]

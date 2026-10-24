@@ -51,6 +51,19 @@ F1 metrics used by the authors' SAC implementation.
 - `clip_range`: epsilon in the clipped PPO surrogate objective.
 - `n_steps`: rollout length before one optimization phase.
 - `n_epochs`: passes over each rollout during that optimization phase.
+- `target_kl`: optional early-stop threshold for updates that move the policy
+  too far. Omit it to retain the original PPO baseline.
+
+A matched three-seed experiment compares the original baseline with
+`--target-kl 0.1`. Its dated protocol and results are recorded in
+section 15 of `docs/开发日志_PPO_SAC完整实验.md`. The single- versus
+three-training-seed comparison is recorded separately in section 14.
+
+Section 16 of the same dated development log records a failure-diagnosis and
+slow-tempo sampling experiment. `learning.diagnose_ppo_failures` saves per-step
+target/played keys, failure buckets, and activation plots. The optional
+`--slow-tempo-curriculum` flag samples full slow-tempo songs after a full-song
+normal-tempo warmup; the experiment did not improve true target-key hits.
 
 The normal end of a MIDI sequence has dm_env discount 1 and is represented as
 `truncated=True`; a failure with discount 0 is represented as
