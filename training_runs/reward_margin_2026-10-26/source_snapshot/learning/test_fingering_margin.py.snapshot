@@ -1,0 +1,66 @@
+"""Regression checks for changing only the annotated-fingering falloff margin."""
+
+import numpy as np
+import pytest
+from dm_control.utils.rewards import tolerance
+
+from learning.common import DEFAULT_ENVIRONMENT, make_env
+from learning.reward_diagnostics import RewardDiagnosticsWrapper, measure_reward_state
+
+
+def test_default_margin_preserves_original_transitions_and_rewards():
+    default = make_env(DEFAULT_ENVIRONMENT, 77)
+    explicit = make_env(DEFAULT_ENVIRONMENT, 77, 0.1)
+    try:
+        a, _ = default.reset(seed=77)
+        b, _ = explicit.reset(seed=77)
+        np.testing.assert_array_equal(a, b)
+        action = (default.action_space.low + default.action_space.high) / 2
+        for _ in range(12):
+            a = default.step(action)
+            b = explicit.step(action)
+            np.testing.assert_array_equal(a[0], b[0])
+            assert a[1:4] == b[1:4]
+            d = measure_reward_state(default.dm_env.task, default.dm_env.physics)
+            assert d["original_reward"] == pytest.approx(a[1], abs=1e-12)
+    finally:
+        default.close()
+        explicit.close()
+
+
+def test_margin_changes_only_fingering_reward():
+    narrow = make_env(DEFAULT_ENVIRONMENT, 77, 0.1)
+    wide = RewardDiagnosticsWrapper(make_env(DEFAULT_ENVIRONMENT, 77, 0.5))
+    try:
+        narrow.reset(seed=77)
+        wide.reset(seed=77)
+        action = (narrow.action_space.low + narrow.action_space.high) / 2
+        changed = False
+        for _ in range(12):
+            a = narrow.step(action)
+            b = wide.step(action)
+            np.testing.assert_array_equal(a[0], b[0])
+            x = narrow.dm_env.task.reward_fn.reward_terms
+            y = wide.unwrapped.dm_env.task.reward_fn.reward_terms
+            for name in x:
+                if name != "fingering_reward":
+                    assert x[name] == y[name]
+            assert y["fingering_reward"] >= x["fingering_reward"]
+            changed |= y["fingering_reward"] > x["fingering_reward"]
+            assert b[1] - a[1] == pytest.approx(y["fingering_reward"] - x["fingering_reward"])
+            assert b[4]["reward_diagnostics"]["original_reward"] == pytest.approx(a[1])
+        assert changed
+    finally:
+        narrow.close()
+        wide.close()
+
+
+def test_widening_margin_keeps_close_key_threshold():
+    for margin in [0.1, 0.3, 0.5]:
+        assert tolerance(0.01, bounds=(0, 0.01), margin=margin, sigmoid="gaussian") == 1
+
+
+@pytest.mark.parametrize("margin", [0, -0.1, float("nan"), float("inf")])
+def test_bad_margins_rejected(margin):
+    with pytest.raises(ValueError, match="finite and positive"):
+        make_env(DEFAULT_ENVIRONMENT, 77, margin)

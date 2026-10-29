@@ -1,0 +1,7 @@
+{
+  "finished_at": "2026-10-27T00:32:32.404312+01:00",
+  "new_models": 3,
+  "reevaluated_control_models": 3,
+  "complete_episodes": 126,
+  "baseline_regression_matches_rounds_1_and_2": true
+}

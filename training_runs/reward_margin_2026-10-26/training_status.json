@@ -1,0 +1,47 @@
+[
+  {
+    "group": "margin_0p1",
+    "seed": 20000,
+    "status": "trained"
+  },
+  {
+    "group": "margin_0p1",
+    "seed": 20002,
+    "status": "trained"
+  },
+  {
+    "group": "margin_0p1",
+    "seed": 20001,
+    "status": "trained"
+  },
+  {
+    "group": "margin_0p3",
+    "seed": 20001,
+    "status": "trained"
+  },
+  {
+    "group": "margin_0p3",
+    "seed": 20000,
+    "status": "trained"
+  },
+  {
+    "group": "margin_0p3",
+    "seed": 20002,
+    "status": "trained"
+  },
+  {
+    "group": "margin_0p5",
+    "seed": 20000,
+    "status": "trained"
+  },
+  {
+    "group": "margin_0p5",
+    "seed": 20001,
+    "status": "trained"
+  },
+  {
+    "group": "margin_0p5",
+    "seed": 20002,
+    "status": "trained"
+  }
+]

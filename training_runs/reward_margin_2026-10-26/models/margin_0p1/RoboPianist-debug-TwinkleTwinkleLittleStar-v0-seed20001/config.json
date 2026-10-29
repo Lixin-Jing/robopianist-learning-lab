@@ -1,0 +1,31 @@
+{
+  "environment": "RoboPianist-debug-TwinkleTwinkleLittleStar-v0",
+  "total_timesteps": 20000,
+  "seed": 20001,
+  "output_dir": "/Users/jing/Local_Project/robopianist/training_runs/reward_margin_2026-10-26/models/margin_0p1",
+  "learning_rate": 0.0003,
+  "n_steps": 256,
+  "batch_size": 64,
+  "n_epochs": 10,
+  "gamma": 0.99,
+  "gae_lambda": 0.95,
+  "clip_range": 0.2,
+  "target_kl": null,
+  "slow_tempo_curriculum": false,
+  "curriculum_warmup_episodes": 32,
+  "curriculum_slow_probability": 0.7,
+  "curriculum_slow_stretch": 1.2,
+  "fingering_reward_margin": 0.1,
+  "reward_diagnostics": true,
+  "torch_threads": 1,
+  "task_kwargs": {
+    "n_steps_lookahead": 10,
+    "trim_silence": true,
+    "gravity_compensation": true,
+    "reduced_action_space": true,
+    "control_timestep": 0.05,
+    "primitive_fingertip_collisions": true,
+    "change_color_on_activation": true,
+    "fingering_reward_margin": 0.1
+  }
+}

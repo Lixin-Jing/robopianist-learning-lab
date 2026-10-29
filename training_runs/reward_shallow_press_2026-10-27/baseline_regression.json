@@ -1,0 +1,16 @@
+{
+  "compared_episodes": 63,
+  "fields": [
+    "episode_return",
+    "wrapper_f1",
+    "wrapper_recall",
+    "true_positive_keys",
+    "missed_target_keys",
+    "unwanted_pressed_keys",
+    "key_micro_recall",
+    "key_micro_f1",
+    "finger_distance_mean_m",
+    "target_depression_mean"
+  ],
+  "all_match": true
+}

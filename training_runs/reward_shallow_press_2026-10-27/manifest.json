@@ -1,0 +1,26 @@
+{
+  "started_at": "2026-10-27T00:16:53.428926+01:00",
+  "original_core_sha256": {
+    "learning/common.py": "eb1ee4731ac0ce077a8dd64275536810b5f278fcc27141a51a1c8177f9d6caf6",
+    "learning/train_ppo.py": "d0ffa2b2cd79c0eeb8319906e8aabb969da4e06fba02c4f6f520e6b7b54c10c0",
+    "learning/diagnose_ppo_failures.py": "83c4c5d5a95be8b848d5df97e201dd8e8c53db5d44e571cff275fb8247499891",
+    "robopianist/suite/tasks/piano_with_shadow_hands.py": "563d088907f8477b6e860df086c0327f6526020d18629c1b0baedc0b1adf6229"
+  },
+  "eta": 0.5,
+  "fingering_margin_m": 0.1,
+  "energy_penalty_coef": 0.005,
+  "training_seeds": [
+    20000,
+    20001,
+    20002
+  ],
+  "evaluation_seeds": [
+    40000,
+    40001,
+    40002
+  ],
+  "requested_timesteps": 20000,
+  "actual_timesteps": 20224,
+  "control_models": "/Users/jing/Local_Project/robopianist/training_runs/reward_margin_2026-10-26/models/margin_0p1",
+  "design": "Round 2 alone; no round-1 margin modification; original-reward evaluation"
+}
