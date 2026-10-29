@@ -8,3 +8,6 @@ dist/
 pig_single_finger/
 training_runs/
 .idea/
+
+# Keep generated experiment figures local.
+/report_ppo_sac/images/
