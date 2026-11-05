@@ -11,3 +11,4 @@ training_runs/
 
 # Keep generated experiment figures local.
 /report_ppo_sac/images/
+/report_reward_adjustment/images/

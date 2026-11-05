@@ -1,0 +1,234 @@
+\documentclass[UTF8,a4paper,11pt]{ctexart}
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{amsmath,amssymb,booktabs,tabularx,array,float,graphicx}
+\usepackage{enumitem,hyperref}
+\hypersetup{colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue}
+\setlist[enumerate]{leftmargin=2em,itemsep=0.3em}
+\renewcommand{\arraystretch}{1.18}
+\setlength{\emergencystretch}{2em}
+\graphicspath{{images/}}
+
+\begin{document}
+
+\section{实验目的与设置}
+
+本实验使用《小星星》调试任务，PPO 采用 Stable-Baselines3 的实现。各组共同配置如表~\ref{tab:config} 所示。
+
+\begin{table}[H]
+\centering
+\caption{共同训练配置}
+\label{tab:config}
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+项目 & 设置 \\
+\midrule
+训练种子 & 20000、20001、20002 \\
+请求步数／实际步数 & 每模型 20,000／20,224 步 \\
+策略与价值网络隐藏层 & $[256,256]$ \\
+学习率 & $3\times10^{-4}$ \\
+Rollout 长度／Mini-batch & 256／64 \\
+每次更新的训练轮数 & 10 \\
+折扣因子／GAE 参数 & $\gamma=0.99$，$\lambda=0.95$ \\
+PPO 裁剪参数 & $\epsilon=0.2$ \\
+控制周期 & 0.05 s \\
+归一化 & 训练时归一化观察与奖励；评估时仅归一化观察 \\
+其他设置 & 不启用 KL 提前停止和慢速课程 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+每种参数设置训练三个模型。原始对照在方案一实验中重新训练，方案二、三复用这三个对照模型并重新评估，重评结果与此前记录一致。
+
+每个模型使用评估种子 40000、40001、40002，测试原始场景、慢速 1.2 倍时长、快速 0.8 倍时长、降低两个半音、升高两个半音、随机初始手位及快速升调随机手位的组合场景。每种参数设置共评估 $3\times7\times3=63$ 个完整演奏回合，采用确定性动作，不更新观察归一化统计。
+
+所有模型统一使用原始奖励评估：指尖 margin 为 0.1 米、下压反馈为原始高斯形式、能量系数为 0.005，确保回报具有相同计分标准。
+
+\subsection{评价指标}
+
+将全部琴键和控制时刻组成按键时间格，累计正确激活 $TP$、漏按 $FN$ 和误按 $FP$：
+\begin{align}
+\mathrm{Recall} &= \frac{TP}{TP+FN},\\
+F_{1,\mathrm{micro}} &= \frac{2TP}{2TP+FP+FN}.
+\end{align}
+持续按住同一个键会累计多个格。本文的 micro F1 按整个回合累计计数计算，与官方逐控制步计算后平均的 F1 分开记录。
+
+每个模型先在各场景内平均三个评估种子的结果，再对七场景等权平均，最后计算三个训练模型的均值和样本标准差。图中的柱高为均值，逐训练种子的 F1 另用热力图展示。
+
+\section{试验方案}
+
+\subsection{方案一：扩大指尖接近奖励的衰减尺度}
+
+\paragraph{试验目的}
+此前诊断发现，指定指尖经常距离目标键较远，原始接近奖励在这些距离下数值很小。RoboPianist 原论文通过人类指法标签和指尖接近奖励引导探索\cite{robopianist}。参考这一设计，本方案扩大距离衰减尺度，使远离目标键时的接近动作获得更明显的反馈，检验该修改能否提高目标键召回率和按键 F1。
+
+\paragraph{具体改动}
+将原始高斯接近奖励的 margin 从 $0.1\ \mathrm{m}$ 分别调整为 $0.3\ \mathrm{m}$ 和 $0.5\ \mathrm{m}$。指尖进入 0.01 米范围内获得满分的条件不变。margin 控制满分范围外的奖励衰减尺度，不是物理运动范围或奖励的硬截止距离。
+
+该方案属于\textbf{奖励函数参数调整}。相同指尖距离下，修改前后的奖励不同；动力学、动作空间、下压反馈、误按项和能量惩罚均保持原始设置。
+
+\subsection{方案二：增强目标键浅压反馈}
+
+\paragraph{试验目的}
+接近目标键与成功按下目标键是两个不同的控制要求。RoboPianist 原论文采用平滑下压奖励提供稠密学习信号\cite{robopianist}。参考这一思路，本方案提高轻微下压阶段的奖励反馈，检验策略能否将接近行为进一步转化为有效触键，减少漏按并提高按键 F1。
+
+\paragraph{具体改动}
+令 $q\in[0,1]$ 为目标键归一化下压量，原始反馈为 $g(1-q)$，修改为：
+\begin{equation}
+h(q)=(1-\eta)g(1-q)+
+\eta\operatorname{clip}\left(\frac{q}{0.95},0,1\right),
+\qquad \eta=0.5.
+\end{equation}
+原始高斯反馈与线性反馈各占 50\%，仅替换原按键奖励中权重为 0.5 的目标下压部分。无误按奖励不变，静音步不增加额外奖励。指尖 margin 为 0.1 米，能量系数为 0.005。
+
+该方案属于\textbf{奖励函数形式调整}。混合公式及比例由本项目设计。
+
+\subsection{方案三：降低能量惩罚}
+
+\paragraph{试验目的}
+RoboPianist 原论文使用能量惩罚减少不规则动作，并报告了跨训练种子方差的改善\cite{robopianist}。围绕这一正则项，本方案降低惩罚强度，检验减轻动作代价后能否增加有效触键，提高目标键召回率和按键 F1。
+
+\paragraph{具体改动}
+代码按执行器功率代理量计算能量奖励：
+\begin{equation}
+r_E(t)=-c_E\sum_j P_j(t).
+\end{equation}
+将 $c_E$ 从 0.005 降至 0.001，降低 80\%。指尖 margin 保持 0.1 米，下压反馈恢复原始高斯形式。该项累积值用于比较动作代价，不直接作为实际消耗的焦耳数报告。
+
+该方案属于\textbf{奖励项权重调整}。降低系数是本项目的独立对照，所有模型最终均使用原始系数 0.005 评估。
+
+\section{实验结果与分析}
+
+\subsection{七场景总体结果}
+
+表~\ref{tab:overall} 与图~\ref{fig:overall} 展示七场景等权平均结果。F1 变化以共同原始对照为基准；表中 F1 为均值$\pm$样本标准差，其余指标为均值。
+
+\begin{table}[H]
+\centering
+\small
+\caption{七场景总体结果}
+\label{tab:overall}
+\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\textwidth}{@{}Xrrrr@{}}
+\toprule
+设置 & 召回率 & micro F1 & F1 变化 & 误按格数 \\
+\midrule
+原始 PPO & 1.206\% & $0.016669\pm0.016125$ & --- & 68.97 \\
+方案一：0.3 米 & 1.860\% & $0.021470\pm0.009506$ & $+28.80\%$ & 101.94 \\
+方案一：0.5 米 & 1.455\% & $0.014977\pm0.022583$ & $-10.15\%$ & 100.98 \\
+方案二：浅压反馈 & 1.001\% & $0.015312\pm0.004324$ & $-8.14\%$ & 62.86 \\
+方案三：能量系数 0.001 & 1.072\% & $0.012996\pm0.001680$ & $-22.03\%$ & 49.49 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{seven_scenarios.pdf}
+\caption{七场景总体比较。柱高为三个训练模型的均值；召回率和 F1 越高越好，误按格数越低越好。}
+\label{fig:overall}
+\end{figure}
+
+\textbf{方案一的 0.3 米设置取得最高平均 F1。}
+相较原始 0.1 米设置，其平均 micro F1 提高 28.80\%，召回率从 1.206\% 提高到 1.860\%。代价是误按格数增加约 47.80\%，从 68.97 增至 101.94。该设置改善了目标键覆盖，后续重点是控制新增误按。
+
+\textbf{将 margin 继续扩大到 0.5 米后，平均 F1 降低。}
+其七场景指定指尖平均距离从原始的 42.37 cm 缩短到 25.56 cm，但 F1 低于原始对照，误按仍维持在约 101 格。指尖距离缩短没有转化为更准确的目标键激活，因此不采用 0.5 米设置。
+
+\textbf{方案二和方案三的平均按键表现均低于原始对照。}
+方案二的平均 F1 下降 8.14\%，方案三下降 22.03\%。两者减少了误按，但目标键召回率同时下降，未解决主要漏按问题。
+
+\subsection{固定原速场景}
+
+\begin{table}[H]
+\centering
+\small
+\caption{固定原速《小星星》的结果，均为三个训练模型的均值}
+\label{tab:fixed}
+\begin{tabularx}{\textwidth}{@{}Xrrrr@{}}
+\toprule
+设置 & 召回率 & micro F1 & 误按格数 & 指尖距离/cm \\
+\midrule
+原始 PPO & 0.866\% & 0.010256 & 83.67 & 43.62 \\
+方案一：0.3 米 & 2.381\% & 0.026906 & 119.00 & 35.78 \\
+方案一：0.5 米 & 0.216\% & 0.002144 & 123.00 & 25.38 \\
+方案二：浅压反馈 & 0.216\% & 0.003058 & 88.67 & 37.93 \\
+方案三：能量系数 0.001 & 0.433\% & 0.006227 & 57.00 & 28.94 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{fixed_tempo.pdf}
+\caption{固定原速场景比较。柱高为三个训练模型的均值。}
+\label{fig:fixed}
+\end{figure}
+
+固定原速场景中，0.3 米设置的平均 micro F1 从原始的 0.010256 提高到 0.026906，同样为各设置中的最高值。0.5 米设置、方案二和方案三均低于原始对照。
+
+方案二的固定原速 F1 下降约 70.18\%，方案三下降约 39.29\%。方案三三个模型的正确命中格数分别只有 1、1、0。减轻能量惩罚后，误按减少、指尖平均距离缩短，但目标键激活仍然极少。
+
+\subsection{各训练种子的结果}
+
+\begin{table}[H]
+\centering
+\small
+\caption{各训练种子的七场景平均 micro F1}
+\label{tab:seed}
+\begin{tabularx}{\textwidth}{@{}Xrrr@{}}
+\toprule
+设置 & seed 20000 & seed 20001 & seed 20002 \\
+\midrule
+原始 PPO & 0.017819 & 0.000000 & 0.032188 \\
+方案一：0.3 米 & 0.013158 & 0.019418 & 0.031834 \\
+方案一：0.5 米 & 0.003087 & 0.000823 & 0.041020 \\
+方案二：浅压反馈 & 0.012850 & 0.020305 & 0.012782 \\
+方案三：能量系数 0.001 & 0.011132 & 0.014394 & 0.013463 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{training_seeds.pdf}
+\caption{各训练种子的七场景平均 micro F1。颜色越深表示 F1 越高，单元格同时标出具体数值。}
+\label{fig:seed}
+\end{figure}
+
+0.3 米设置的平均提升主要来自 seed 20001，其 F1 从 0 提高到 0.019418；另外两个种子略低于各自原始对照。0.5 米设置在 seed 20002 取得 0.041020，但另外两个种子明显较低，最终平均值低于原始对照。模型比较采用三个种子的平均结果，不以单个最高值替代总体表现。
+
+\subsection{总回报与正确按键表现的差异}
+
+统一按原始奖励评估时，原始 PPO 的七场景平均回报为 171.53，方案二为 190.45，方案三为 210.76。后两者回报提高，但平均 F1 分别下降 8.14\% 和 22.03\%。
+
+总回报包含按键、指尖、踏板、前臂和能量等分项，其排序与按键准确性不同。若只按回报选择模型，会将方案二或方案三排在原始 PPO 之前。因此，后续以目标键召回率、micro F1 和误按量作为主要选择指标，回报和指尖距离用于解释行为。
+
+\section{实验结论}
+
+\begin{enumerate}
+\item \textbf{保留方案一的 0.3 米设置作为优先验证候选。}
+它取得最高平均 F1，相比原始设置提高 28.80\%，但误按增加约 47.80\%。后续重点是提高按键选择与执行的准确性，控制新增误按。
+
+\item \textbf{不采用 0.5 米指尖 margin。}
+该设置显著缩短指尖距离，却使平均 F1 下降 10.15\%。继续扩大接近奖励尺度没有带来更好的按键表现。
+
+\item \textbf{舍弃方案二当前的浅压混合公式。}
+其七场景平均 F1 下降 8.14\%，固定原速下降约 70.18\%。下压反馈恢复原始高斯形式。
+
+\item \textbf{保留原始能量惩罚系数 0.005。}
+方案三将系数降至 0.001 后，七场景平均 F1 下降 22.03\%，没有缓解主要漏按问题，不采用这一修改。
+\end{enumerate}
+
+三种奖励调整方案中，扩大指尖奖励至 0.3 米是当前最有效的修改。接下来应围绕该设置，记录正确命中和误按时的目标序列、实际按键、指尖位置及下压量，定位新增误按发生的环节，再设计对应的独立改动。当前最高平均召回率仍为 1.860\%，后续工作的核心是将接近行为转化为更多正确、按时的目标键激活。
+
+\begin{thebibliography}{9}
+\bibitem{robopianist}
+Zakka K, Wu P, Smith L, et al.
+RoboPianist: Dexterous Piano Playing with Deep Reinforcement Learning.
+In: Proceedings of the 7th Conference on Robot Learning.
+Proceedings of Machine Learning Research,
+2023, 229: 2975--2994.
+\url{https://proceedings.mlr.press/v229/zakka23a.html}
+\end{thebibliography}
+
+\end{document}
